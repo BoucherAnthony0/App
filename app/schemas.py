@@ -1,0 +1,62 @@
+"""Pydantic schemas for the REST API."""
+from pydantic import BaseModel, Field
+
+
+class PlayerInput(BaseModel):
+    overall: int = Field(..., ge=40, le=99, description="Overall rating")
+    potential: int = Field(..., ge=40, le=99)
+    age: int = Field(..., ge=15, le=45)
+    height_cm: float = Field(..., ge=150, le=215)
+    weight_kg: float = Field(..., ge=45, le=120)
+    preferred_foot: str = Field("Right", pattern="^(Right|Left)$")
+    work_rate: str = Field("Medium/Medium")
+    weak_foot: int = Field(3, ge=1, le=5)
+    skill_moves: int = Field(3, ge=1, le=5)
+    international_reputation: int = Field(1, ge=1, le=5)
+    pace: int = Field(70, ge=1, le=99)
+    shooting: int = Field(65, ge=1, le=99)
+    passing: int = Field(68, ge=1, le=99)
+    dribbling: int = Field(70, ge=1, le=99)
+    defending: int = Field(40, ge=1, le=99)
+    physic: int = Field(72, ge=1, le=99)
+    attacking_crossing: int = Field(65, ge=1, le=99)
+    attacking_finishing: int = Field(65, ge=1, le=99)
+    attacking_heading_accuracy: int = Field(60, ge=1, le=99)
+    attacking_short_passing: int = Field(68, ge=1, le=99)
+    attacking_volleys: int = Field(55, ge=1, le=99)
+    skill_dribbling: int = Field(70, ge=1, le=99)
+    skill_curve: int = Field(60, ge=1, le=99)
+    skill_fk_accuracy: int = Field(55, ge=1, le=99)
+    skill_long_passing: int = Field(62, ge=1, le=99)
+    skill_ball_control: int = Field(70, ge=1, le=99)
+    movement_acceleration: int = Field(72, ge=1, le=99)
+    movement_sprint_speed: int = Field(70, ge=1, le=99)
+    movement_agility: int = Field(68, ge=1, le=99)
+    movement_reactions: int = Field(70, ge=1, le=99)
+    movement_balance: int = Field(68, ge=1, le=99)
+    power_shot_power: int = Field(72, ge=1, le=99)
+    power_jumping: int = Field(65, ge=1, le=99)
+    power_stamina: int = Field(74, ge=1, le=99)
+    power_strength: int = Field(68, ge=1, le=99)
+    power_long_shots: int = Field(62, ge=1, le=99)
+    mentality_aggression: int = Field(65, ge=1, le=99)
+    mentality_interceptions: int = Field(45, ge=1, le=99)
+    mentality_positioning: int = Field(68, ge=1, le=99)
+    mentality_vision: int = Field(68, ge=1, le=99)
+    mentality_penalties: int = Field(60, ge=1, le=99)
+    mentality_composure: int = Field(70, ge=1, le=99)
+    defending_marking_awareness: int = Field(40, ge=1, le=99)
+    defending_standing_tackle: int = Field(40, ge=1, le=99)
+    defending_sliding_tackle: int = Field(38, ge=1, le=99)
+    goalkeeping_diving: int = Field(0, ge=0, le=99)
+    goalkeeping_handling: int = Field(0, ge=0, le=99)
+    goalkeeping_kicking: int = Field(0, ge=0, le=99)
+    goalkeeping_positioning: int = Field(0, ge=0, le=99)
+    goalkeeping_reflexes: int = Field(0, ge=0, le=99)
+    goalkeeping_speed: int = Field(0, ge=0, le=99)
+
+
+class PredictionResponse(BaseModel):
+    estimated_value_eur: float
+    model_name: str
+    potential_gap: int
