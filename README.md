@@ -36,16 +36,36 @@ streamlit run streamlit_app.py
 
 ### Données réelles (résultats exploitables)
 
-Le vrai jeu de données provient de Kaggle (*EA Sports FC 24 complete player dataset* / sofifa,
-~18 000 joueurs). Il n'est pas versionné (licence + volume + auth Kaggle requise).
+Le vrai jeu de données (*EA Sports FC 24 / sofifa*, ~18 000 joueurs, **~90 Mo**) n'est **pas
+versionné dans git** : GitHub bloque les fichiers > 100 Mo et un gros binaire alourdit
+définitivement l'historique. Il est publié comme **asset d'une GitHub Release** et récupéré
+à la demande par un script — le dépôt reste léger et 100 % reproductible.
 
+**Récupérer les données** (une fois la Release publiée, cf. ci-dessous) :
 ```bash
-# Avec l'API Kaggle configurée (~/.kaggle/kaggle.json) :
-kaggle datasets download -d stefanoleone992/ea-sports-fc-24-complete-player-dataset
-unzip -o ea-sports-fc-24-complete-player-dataset.zip -d data/raw/
-# Le fichier joueurs doit être accessible en data/raw/male_players.csv (cf. config/params.yaml).
-python src/pipeline.py
+python scripts/download_data.py        # télécharge l'asset dans data/raw/male_players.csv
+python src/pipeline.py                 # entraîne sur les vraies données
 ```
+> Le script gère un asset `.csv` ou `.csv.gz` (décompression auto), respecte le proxy, et ne
+> re-télécharge pas si le fichier est déjà là (`--force` pour forcer). URL surchargée par
+> `--url`, `--tag`, ou la variable d'environnement `DATA_URL`.
+
+**Publier les données sur une Release** (à faire une fois, par le mainteneur) :
+```bash
+# Optionnel : compresser (90 Mo -> ~20 Mo) pour un téléchargement plus rapide
+gzip -k data/raw/male_players.csv      # produit male_players.csv.gz
+
+# Via l'interface GitHub : Repo > Releases > Draft a new release > tag "data-v1"
+#   puis glisser male_players.csv (ou .csv.gz) dans "Attach binaries". Publish.
+# Ou via gh CLI :
+gh release create data-v1 data/raw/male_players.csv.gz --title "Dataset EA FC 24" \
+  --notes "Dataset joueurs (~90 Mo) pour le pipeline. Source : Kaggle/sofifa."
+```
+Les valeurs par défaut du script (`--repo BoucherAnthony0/App`, `--tag data-v1`,
+`--asset male_players.csv`) sont à aligner avec ta Release dans `scripts/download_data.py`.
+
+> Origine des données : Kaggle *EA Sports FC 24 complete player dataset* (sofifa). Respecter
+> la licence du dataset lors de la republication.
 
 ---
 

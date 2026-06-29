@@ -35,7 +35,8 @@ def main(config_path: str = "config/params.yaml") -> None:
         logger.warning(
             "Dataset introuvable (%s) → génération d'un échantillon SYNTHÉTIQUE. "
             "Les métriques n'auront pas de valeur métier. Pour des résultats réels, "
-            "placez le vrai male_players.csv (cf. README) puis relancez.",
+            "exécutez `python scripts/download_data.py` (cf. README « Données réelles ») "
+            "puis relancez.",
             raw_path,
         )
         from src.data.make_dataset import generate
