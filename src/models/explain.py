@@ -1,4 +1,5 @@
 """Model explanation helpers (SHAP)."""
+import logging
 import os
 import numpy as np
 import pandas as pd
@@ -8,6 +9,10 @@ from sklearn.pipeline import Pipeline
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# SHAP logge ses calculs internes (KernelExplainer) en INFO de façon très verbeuse —
+# on le réduit à WARNING pour garder les sorties du pipeline lisibles.
+logging.getLogger("shap").setLevel(logging.WARNING)
 
 
 def _get_feature_names(pipeline: Pipeline) -> list:

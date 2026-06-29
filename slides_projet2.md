@@ -65,16 +65,17 @@ données → features (PotentialGapTransformer) → preprocessor
 
 ---
 
-## 5. Preuves & résultats
+## 5. Preuves & résultats *(vraies données, FIFA 24, ~18 000 joueurs)*
 
 | Modèle | MAE (€) | RMSE (€) | R² | CV RMSE (log) |
 |---|---|---|---|---|
-| baseline | 257 784 | 431 831 | −0,12 | 0,890 |
-| **ridge** | **116 264** | **197 399** | **0,77** | **0,356** |
-| random_forest | 116 533 | 200 821 | 0,76 | 0,357 |
-| gradient_boosting | 116 502 | 200 859 | 0,76 | 0,353 |
+| baseline | 2 318 653 | 8 303 828 | −0,05 | 1,238 |
+| ridge | 661 973 | 5 785 498 | 0,49 | 0,219 |
+| random_forest | 169 561 | 1 899 166 | 0,945 | 0,064 |
+| gradient_boosting | 116 262 | 1 139 951 | 0,980 | **0,047** |
+| **mlp** *(retenu)* | 199 583 | **890 860** | **0,988** | 0,094 |
 
-*(chiffres synthétiques — démonstration de la chaîne ; vrai dataset = relancer le pipeline)*
+> 🔎 MLP = meilleur RMSE test ; GB = meilleure MAE + CV la plus stable → débat sélection test vs CV.
 
 - ✅ 11/11 tests `pytest` (dont 2 anti-fuite) · API `/predict` opérationnelle · Docker.
 

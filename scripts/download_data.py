@@ -46,14 +46,46 @@ def _build_url(repo: str, tag: str, asset: str) -> str:
     return f"https://github.com/{repo}/releases/download/{tag}/{asset}"
 
 
-def _progress(block_num: int, block_size: int, total_size: int) -> None:
-    if total_size <= 0:
-        return
-    downloaded = block_num * block_size
-    pct = min(100, downloaded * 100 // total_size)
-    mb = downloaded / 1e6
-    sys.stdout.write(f"\r  téléchargé {mb:6.1f} Mo ({pct:3d} %)")
-    sys.stdout.flush()
+def _download_with_resume(url: str, tmp: str, max_retries: int = 5) -> None:
+    """Télécharge avec reprise (Range) et retries — robuste aux coupures de proxy.
+
+    POURQUOI : un téléchargement de ~90 Mo via le proxy peut se couper en fin de transfert.
+    On reprend alors là où on s'est arrêté (en-tête HTTP `Range`) plutôt que tout reprendre.
+    """
+    total = None
+    for attempt in range(1, max_retries + 1):
+        done = os.path.getsize(tmp) if os.path.exists(tmp) else 0
+        req = urllib.request.Request(url, headers={"Range": f"bytes={done}-"} if done else {})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                # Taille totale (Content-Range si reprise, sinon Content-Length).
+                if total is None:
+                    cr = resp.headers.get("Content-Range")
+                    total = int(cr.split("/")[-1]) if cr else (
+                        int(resp.headers.get("Content-Length", 0)) + done
+                    )
+                mode = "ab" if done else "wb"
+                with open(tmp, mode) as f:
+                    while True:
+                        chunk = resp.read(1024 * 256)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        done += len(chunk)
+                        if total:
+                            sys.stdout.write(
+                                f"\r  {done/1e6:6.1f}/{total/1e6:.1f} Mo "
+                                f"({done*100//total:3d} %)"
+                            )
+                            sys.stdout.flush()
+            if total and os.path.getsize(tmp) >= total:
+                sys.stdout.write("\n")
+                return
+        except Exception as exc:
+            if attempt == max_retries:
+                raise
+            logger.warning("Coupure (%s) — reprise %d/%d…", exc, attempt + 1, max_retries)
+    sys.stdout.write("\n")
 
 
 def download(url: str, dest: str, force: bool = False) -> str:
@@ -68,9 +100,8 @@ def download(url: str, dest: str, force: bool = False) -> str:
 
     logger.info("Téléchargement depuis %s", url)
     try:
-        urllib.request.urlretrieve(url, tmp, reporthook=_progress)
-        sys.stdout.write("\n")
-    except Exception as exc:  # 404 = release/asset inexistant, réseau, etc.
+        _download_with_resume(url, tmp)
+    except Exception as exc:  # 404 = release/asset inexistant, réseau épuisé, etc.
         if os.path.exists(tmp):
             os.remove(tmp)
         raise SystemExit(

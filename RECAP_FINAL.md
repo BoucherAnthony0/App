@@ -28,13 +28,14 @@
 
 ## 3. Limites restantes assumées
 
-1. **Données réelles non versionnées** : la démo par défaut tourne sur un **synthétique**, donc
-   les métriques affichées n'ont pas de valeur métier (la *chaîne* est prouvée, pas la perf).
-2. **Tuning restreint** : `RandomizedSearchCV` sur un espace volontairement borné (temps).
-3. **Hétéroscédasticité** sur les valeurs extrêmes (cible log-normale) — visible sur les résidus.
-4. **Pas de suivi d'expériences ni de CI/CD** dans le périmètre actuel.
-5. **MLP** sous-performant sur le synthétique (artefact de données aléatoires) ; à réévaluer
-   sur données réelles.
+1. **Sélection sur le test, pas la CV** : le meilleur modèle est choisi sur le RMSE du test
+   (→ MLP, R² 0,988) alors que la validation croisée favorise le gradient boosting (plus
+   stable, CV RMSE 0,047). Une sélection fondée CV serait plus robuste.
+2. **Données réelles hors git** : publiées en GitHub Release + récupérées par
+   `scripts/download_data.py` (le dépôt reste léger, mais dépend de la Release).
+3. **Tuning restreint** : `RandomizedSearchCV` sur un espace volontairement borné (temps).
+4. **Hétéroscédasticité** sur les valeurs extrêmes (stars >50 M€) — visible sur les résidus.
+5. **Pas de suivi d'expériences ni de CI/CD** dans le périmètre actuel.
 
 ## 4. Pistes d'amélioration (recul critique valorisé par le jury)
 

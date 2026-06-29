@@ -57,19 +57,23 @@ Points d'ingénierie notables :
 
 ## 4. Preuves
 
-> ⚠️ Les chiffres ci-dessous proviennent du **jeu synthétique** par défaut : ils prouvent que
-> la chaîne fonctionne, **pas** une performance métier. Sur le vrai dataset Kaggle, relancer
-> `python src/pipeline.py` régénère ce tableau avec des valeurs réelles.
-
-**Tableau comparatif** (`reports/metrics.csv`) :
+**Tableau comparatif sur les vraies données** (`reports/metrics.csv`, FIFA 24, ~18 000 joueurs,
+dernière mise à jour, split test 20 %) :
 
 | Modèle | MAE (€) | RMSE (€) | R² | CV RMSE (log) |
 |---|---|---|---|---|
-| baseline_mean | 257 784 | 431 831 | −0,12 | 0,890 ± 0,023 |
-| **ridge** | **116 264** | **197 399** | **0,767** | **0,356 ± 0,014** |
-| random_forest | 116 533 | 200 821 | 0,758 | 0,357 ± 0,018 |
-| gradient_boosting | 116 502 | 200 859 | 0,758 | 0,353 ± 0,018 |
-| mlp | 220 929 | 427 074 | −0,09 | 0,738 ± 0,026 |
+| baseline_mean | 2 318 653 | 8 303 828 | −0,05 | 1,238 ± 0,009 |
+| ridge | 661 973 | 5 785 498 | 0,492 | 0,219 ± 0,005 |
+| random_forest | 169 561 | 1 899 166 | 0,945 | 0,064 ± 0,006 |
+| gradient_boosting | 116 262 | 1 139 951 | 0,980 | **0,047 ± 0,002** |
+| **mlp** *(retenu)* | 199 583 | **890 860** | **0,988** | 0,094 ± 0,011 |
+
+> **Lecture critique (point de soutenance)** : le MLP est retenu car il a le **meilleur RMSE
+> de test** (R² = 0,988). Mais le **gradient boosting** a le **meilleur MAE** (116 k€) et la
+> **meilleure RMSE de validation croisée** (0,047, plus stable, faible écart-type). Autrement
+> dit, le MLP gagne sur un tirage unique de test tandis que le GB est plus robuste en CV : une
+> sélection fondée sur la CV plutôt que sur le seul test choisirait le GB. Tous deux écrasent
+> le baseline (RMSE ÷ 9), preuve d'un apprentissage réel du signal.
 
 **Autres preuves** :
 - `reports/figures/shap_summary.png` — importance globale des variables (overall/potential dominants).
@@ -82,19 +86,25 @@ Points d'ingénierie notables :
 
 ## 5. Résultat
 
-Un outil **complet et reproductible** : un `git clone` + `pip install` + `python src/pipeline.py`
-suffit à entraîner un modèle, l'exposer via API et le visualiser via dashboard, avec
-explicabilité SHAP. Tous les modèles battent largement le baseline (preuve d'apprentissage
-réel du signal), et la validation croisée confirme la stabilité du classement.
+Un outil **complet et reproductible** : un `git clone` + `pip install` +
+`python scripts/download_data.py` + `python src/pipeline.py` suffit à entraîner un modèle,
+l'exposer via API et le visualiser via dashboard, avec explicabilité SHAP. Sur les vraies
+données, le meilleur modèle atteint **R² = 0,988** et une **MAE ≈ 116–200 k€** (à rapporter à
+une valeur médiane de marché de l'ordre du million d'euros, et à un baseline à 2,3 M€ de MAE).
+Les modèles non linéaires (GB, MLP, RF) surclassent nettement le linéaire (Ridge, R² 0,49),
+ce qui confirme que la valeur marchande dépend d'interactions non linéaires entre attributs.
 
 ---
 
 ## 6. Limites & améliorations
 
 **Limites assumées** :
-- Données réelles non versionnées → démo sur synthétique par défaut.
+- **Sélection sur le test, pas sur la CV** : le meilleur modèle est choisi sur le RMSE du test
+  (→ MLP), alors que la validation croisée favorise le gradient boosting (plus stable). Une
+  sélection fondée sur la CV serait méthodologiquement plus robuste.
+- Données réelles hors git (publiées en Release + script) ; non re-générables sans la Release.
 - Espace de recherche d'hyperparamètres volontairement restreint (temps de calcul).
-- Hétéroscédasticité attendue sur les valeurs extrêmes (typique d'une cible log-normale).
+- Hétéroscédasticité sur les valeurs extrêmes (stars à >50 M€) — visible sur les résidus.
 - Pas de suivi d'expériences (MLflow) ni de CI/CD.
 
 **Améliorations** :
