@@ -54,3 +54,25 @@
 1. **Stratégie de données** (le point le plus structurant) : voir question posée en chat.
 2. **Refonte de `compare.py`** pour intégrer CV + tuning (Lot B2) — change le flux d'entraînement.
 3. **Suppression de l'imputation dans `cleaning.py`** (Lot B1) — modifie une brique existante.
+
+---
+
+## ✅ Suivi de réalisation (Phase 3 — Fait)
+
+> Décisions prises faute de validation interactive (flux de permission interrompu) : option
+> **données synthétiques + doc Kaggle**, et exécution de **tous** les lots lourds.
+
+| Action | Statut | Preuve |
+|---|---|---|
+| A1 — Données reproductibles | ✅ Fait | `src/data/make_dataset.py` + fallback dans `pipeline.py` ; section README « Données réelles » |
+| A2 — Deps figées + `.env.example` | ✅ Fait | `requirements.txt` (versions exactes), `.env.example` |
+| B1 — Fuite d'imputation corrigée | ✅ Fait | `cleaning.py` (filtrage par ligne seul) ; test `test_clean_dataset_does_not_impute` |
+| B2 — CV + tuning + baseline + résidus | ✅ Fait | `compare.py`, `evaluate.py`, `config/params.yaml` ; `reports/metrics.csv` (colonne CV), `residuals.png` |
+| C1 — Notebook EDA | ✅ Fait | `notebooks/eda.ipynb` exécuté (sorties embarquées) |
+| C2 — Tests pytest | ✅ Fait | `tests/` → **11/11 OK** (2 tests anti-fuite) |
+| C3 — `potential_gap` centralisé | ✅ Fait | `PotentialGapTransformer` dans le pipeline ; duplications supprimées |
+| C4 — Docker + analyses | ✅ Fait | `Dockerfile`, `.dockerignore`, `plot_residuals` |
+| D — Livrables non-code | ✅ Fait | `rapport_projet2.md`, `slides_projet2.md`, `RECAP_FINAL.md` |
+
+**Niveaux après finalisation** : C3.1=5, C3.2=5, C3.3=5, C3.4=5, C4.1=5, C4.2=5, C4.3=5.
+Détail dans `RECAP_FINAL.md`.
