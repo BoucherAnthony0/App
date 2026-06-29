@@ -19,9 +19,9 @@ def _get_feature_names(pipeline: Pipeline) -> list:
 
 
 def compute_shap_values(pipeline: Pipeline, X_sample: pd.DataFrame):
-    preprocessor = pipeline.named_steps["preprocessor"]
     model = pipeline.named_steps["model"]
-    X_transformed = preprocessor.transform(X_sample)
+    # Toutes les étapes de préparation (gap + preprocessor), tout sauf le modèle.
+    X_transformed = pipeline[:-1].transform(X_sample)
     feature_names = _get_feature_names(pipeline)
 
     model_name = model.__class__.__name__
@@ -79,9 +79,8 @@ def explain_single_player(
     X_background: pre-transformed training sample saved in the artifact.
     Required for KernelExplainer (MLP/unknown models) to produce non-zero values.
     """
-    preprocessor = pipeline.named_steps["preprocessor"]
     model = pipeline.named_steps["model"]
-    X_transformed = preprocessor.transform(player_df)
+    X_transformed = pipeline[:-1].transform(player_df)
     feature_names = _get_feature_names(pipeline)
     model_name = model.__class__.__name__
 

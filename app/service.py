@@ -16,12 +16,14 @@ def _get_artifact(model_path: str = "models/best_model.joblib") -> dict:
 def estimate_player_value(player: PlayerInput) -> PredictionResponse:
     artifact = _get_artifact()
     features = player.model_dump()
-    features["potential_gap"] = features["potential"] - features["overall"]
 
+    # `potential_gap` n'est PAS injecté ici : le PotentialGapTransformer du pipeline le
+    # calcule (source de vérité unique). On ne le dérive que pour l'affichage de la réponse.
     estimated = predict_value(artifact, features)
+    potential_gap = player.potential - player.overall
 
     return PredictionResponse(
         estimated_value_eur=estimated,
         model_name=artifact.get("best_model_name", "unknown"),
-        potential_gap=features["potential_gap"],
+        potential_gap=potential_gap,
     )
