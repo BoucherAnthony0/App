@@ -1,103 +1,183 @@
 # Scouting sportif — Estimation de la valeur marchande
 
-Outil d'aide à la décision pour le scouting football : estimation de la valeur de transfert d'un joueur à partir de ses statistiques techniques et physiques (données EA Sports FC / FIFA).
+Outil d'aide à la décision pour le scouting football : estimation de la valeur de transfert
+d'un joueur à partir de ses statistiques techniques et physiques (données EA Sports FC / FIFA).
+
+> **Projet 2 — Data Science (Bloc 2, RNCP40875).** Logique : besoin métier → choix techniques
+> → réalisation → preuve → résultat → limites. Voir `rapport_projet2.md` et `slides_projet2.md`.
 
 ## Objectif
 
-Prédire `value_eur` (valeur marchande en euros) à partir des stats d'un joueur.  
-Identifier des profils **sous-cotés** via le signal `potential_gap = potential − overall`.
+Prédire `value_eur` (valeur marchande en euros) à partir des stats d'un joueur, et identifier
+des profils **sous-cotés** via le signal `potential_gap = potential − overall`.
 
 ---
 
 ## Installation
 
 ```bash
-pip install -r requirements.txt
+python3 -m venv .venv && source .venv/bin/activate   # environnement isolé
+pip install -r requirements.txt                      # dépendances figées
 ```
 
 ---
 
-## Utilisation
+## Démarrage rapide (reproductible après un simple `git clone`)
 
-### 1. Entraîner les modèles
+```bash
+python src/pipeline.py        # entraîne, optimise, évalue, sauvegarde le modèle
+streamlit run streamlit_app.py
+```
 
+> **Données** : si `data/raw/male_players.csv` est absent, le pipeline **génère
+> automatiquement un échantillon synthétique** (`src/data/make_dataset.py`) pour que tout
+> tourne sans téléchargement. ⚠️ Les métriques obtenues sur ce synthétique **n'ont pas de
+> valeur métier** — voir « Données réelles » ci-dessous.
+
+### Données réelles (résultats exploitables)
+
+Le vrai jeu de données (*EA Sports FC 24 / sofifa*, ~18 000 joueurs, **~90 Mo**) n'est **pas
+versionné dans git** : GitHub bloque les fichiers > 100 Mo et un gros binaire alourdit
+définitivement l'historique. Il est publié comme **asset d'une GitHub Release** et récupéré
+à la demande par un script — le dépôt reste léger et 100 % reproductible.
+
+**Récupérer les données** (une fois la Release publiée, cf. ci-dessous) :
+```bash
+python scripts/download_data.py        # télécharge l'asset dans data/raw/male_players.csv
+python src/pipeline.py                 # entraîne sur les vraies données
+```
+> Le script gère un asset `.csv` ou `.csv.gz` (décompression auto), respecte le proxy, et ne
+> re-télécharge pas si le fichier est déjà là (`--force` pour forcer). URL surchargée par
+> `--url`, `--tag`, ou la variable d'environnement `DATA_URL`.
+
+**Publier les données sur une Release** (à faire une fois, par le mainteneur) :
+```bash
+# Optionnel : compresser (90 Mo -> ~20 Mo) pour un téléchargement plus rapide
+gzip -k data/raw/male_players.csv      # produit male_players.csv.gz
+
+# Via l'interface GitHub : Repo > Releases > Draft a new release > tag "data-v1"
+#   puis glisser male_players.csv (ou .csv.gz) dans "Attach binaries". Publish.
+# Ou via gh CLI :
+gh release create data-v1 data/raw/male_players.csv.gz --title "Dataset EA FC 24" \
+  --notes "Dataset joueurs (~90 Mo) pour le pipeline. Source : Kaggle/sofifa."
+```
+Les valeurs par défaut du script (`--repo BoucherAnthony0/App`, `--tag data-v1`,
+`--asset male_players.csv`) sont à aligner avec ta Release dans `scripts/download_data.py`.
+
+> Origine des données : Kaggle *EA Sports FC 24 complete player dataset* (sofifa). Respecter
+> la licence du dataset lors de la republication.
+
+---
+
+## Utilisation détaillée
+
+### 1. Entraîner & évaluer les modèles
 ```bash
 python src/pipeline.py
 ```
+Ce script : charge/filtre les joueurs FIFA 24 → valide le schéma → nettoie (sans fuite) →
+sélectionne les features → entraîne un **baseline** + 4 modèles (Ridge, Random Forest,
+Gradient Boosting, MLP) avec **validation croisée** et **optimisation d'hyperparamètres**
+(`RandomizedSearchCV`) → sauvegarde le meilleur dans `models/best_model.joblib` → génère
+`reports/metrics.csv`, `reports/figures/shap_summary.png` et `reports/figures/residuals.png`.
 
-Ce script :
-- Filtre les joueurs FIFA 24 (~18 350 joueurs)
-- Nettoie les données et sélectionne les features
-- Entraîne et compare 4 modèles (Ridge, Random Forest, XGBoost, MLP)
-- Sauvegarde le meilleur modèle dans `models/best_model.joblib`
-- Génère `reports/metrics.csv` et `reports/figures/shap_summary.png`
+> Pour une exécution rapide (démo), mettre `tuning.enabled: false` dans `config/params.yaml`.
 
-### 2. Lancer le dashboard
+### 2. Générer un dataset synthétique explicitement
+```bash
+python src/data/make_dataset.py --rows 5000 --out data/raw/male_players.csv
+```
 
+### 3. Dashboard interactif
 ```bash
 streamlit run streamlit_app.py
 ```
 
-### 3. Lancer l'API REST (optionnel)
-
+### 4. API REST
 ```bash
 uvicorn app.api:app --reload
+# POST /predict (corps JSON = schéma PlayerInput) · GET /health
+curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
+  -d '{"overall":82,"potential":90,"age":20,"height_cm":185,"weight_kg":78}'
 ```
 
-Endpoint : `POST /predict` — corps JSON selon le schéma `PlayerInput`.
+### 5. Tests
+```bash
+pytest                # 11 tests : données, anti-fuite, pipeline, API
+```
+
+### 6. Conteneur Docker
+```bash
+docker build -t football-scout .
+docker run -p 8000:8000 football-scout      # API sur http://localhost:8000
+```
 
 ---
 
 ## Structure
 
 ```
-config/params.yaml          Configuration centralisée (features, modèles, chemins)
+config/params.yaml          Configuration centralisée (features, modèles, CV, tuning, chemins)
 src/
   config.py                 Chargement du YAML
-  pipeline.py               Point d'entrée principal
+  pipeline.py               Point d'entrée (orchestration + fallback données synthétiques)
   data/
+    make_dataset.py         Génération d'un dataset synthétique réaliste (reproductibilité)
     loader.py               Chargement CSV + filtrage version FIFA
     validation.py           Validation du schéma et de la cible
-    cleaning.py             Nettoyage (cible nulle, valeurs manquantes)
+    cleaning.py             Nettoyage par ligne (SANS imputation -> anti-fuite)
   features/
-    feature_selection.py    Sélection + feature engineering (potential_gap)
-    preprocessor.py         ColumnTransformer (StandardScaler + OHE)
-    custom_transformers.py  Transformer sklearn PotentialGapTransformer
+    feature_selection.py    Sélection des colonnes brutes
+    preprocessor.py         ColumnTransformer (impute + StandardScaler + OHE), fit sur train
+    custom_transformers.py  PotentialGapTransformer (source unique de potential_gap)
   models/
-    model_factory.py        Instanciation des 4 modèles
-    deep_model.py           MLP (MLPRegressor sklearn)
-    compare.py              Entraînement, évaluation, sélection du meilleur modèle
-    train.py                Entraînement générique d'un pipeline
-    evaluate.py             Métriques MAE / RMSE / R²
+    model_factory.py        Pipeline complet (gap -> preprocessor -> modèle) + 4 modèles
+    deep_model.py           MLP (MLPRegressor)
+    compare.py              Baseline + CV + RandomizedSearchCV + sélection du meilleur
+    evaluate.py             Métriques MAE/RMSE/R² + analyse de résidus
     predict.py              Prédiction depuis un dict de features
-    explain.py              Explications SHAP (TreeExplainer / LinearExplainer / KernelExplainer)
-  utils/
-    logger.py               Configuration du logging
-    serialization.py        Sauvegarde / chargement du modèle (joblib)
-app/
-  schemas.py                Schémas Pydantic (PlayerInput, PredictionResponse)
-  service.py                Logique métier (appel predict.py)
-  api.py                    API FastAPI (POST /predict)
-streamlit_app.py            Dashboard interactif
+    explain.py              Explications SHAP (Tree / Linear / Kernel + background)
+  utils/                    logging, sérialisation joblib
+app/                        API FastAPI (api/service/schemas)
+tests/                      Suite pytest
+notebooks/eda.ipynb         Analyse exploratoire (avec sorties)
+Dockerfile                  Image de l'API
 ```
 
 ---
 
 ## Modèles comparés
 
-| Modèle | Description |
+| Modèle | Rôle |
 |---|---|
-| Ridge | Régression linéaire régularisée (baseline) |
-| Random Forest | Ensemble d'arbres de décision |
-| Gradient Boosting (XGBoost) | Boosting par gradient |
-| MLP | Réseau de neurones multi-couches (128→64, ReLU, early stopping) |
+| Baseline (moyenne) | Référence triviale — tout modèle utile doit la battre |
+| Ridge | Régression linéaire régularisée (baseline « sérieux ») |
+| Random Forest | Ensemble d'arbres (capture les non-linéarités) |
+| Gradient Boosting (XGBoost) | Boosting par gradient (repli LightGBM puis HistGB si OpenMP absent) |
+| MLP | Réseau de neurones (128→64, ReLU, early stopping) |
 
-Le tableau comparatif MAE / RMSE / R² est généré dans `reports/metrics.csv`.
+Tableau comparatif MAE / RMSE / R² **+ RMSE de validation croisée** dans `reports/metrics.csv`.
 
 ---
 
-## Notes techniques
+## Notes techniques (le « pourquoi »)
 
-- La cible `value_eur` est transformée en `log1p` avant l'entraînement (distribution très asymétrique).
-- La standardisation (`StandardScaler`) est appliquée dans le pipeline avant le MLP, conformément à l'exigence de normalisation des entrées.
-- Les colonnes d'identifiant, de nom, d'URL et les cotes de position (type `ls`, `st`) sont exclues pour éviter toute fuite de données.
+- **Cible `log1p`** : `value_eur` est très asymétrique ; la transformation log symétrise la
+  distribution (cf. notebook EDA, skewness avant/après) et stabilise l'apprentissage.
+- **Anti-fuite de données** : aucune statistique globale (médiane, moyenne) n'est calculée
+  avant le `train_test_split`. Toute imputation/standardisation vit dans le `Pipeline`
+  sklearn, donc apprise sur le **train uniquement** (vérifié par test automatisé).
+- **`potential_gap` centralisé** : calculé par un transformer sklearn unique, à la fois pour
+  l'entraînement, l'API et le dashboard — pas de duplication.
+- **Robustesse** : validation croisée K-fold + `RandomizedSearchCV` (pas de réglage à la main).
+- **Exclusions** : id, nom, url et cotes de position (`ls`, `st`…) sont écartés pour éviter
+  toute fuite de la cible.
+
+---
+
+## Limites assumées
+
+- Données réelles non versionnées (Kaggle) → démo sur synthétique par défaut.
+- `RandomizedSearchCV` explore un espace restreint (compromis temps/qualité).
+- Pas de suivi d'expériences (MLflow) ni de CI/CD — pistes d'amélioration documentées dans
+  `RECAP_FINAL.md`.

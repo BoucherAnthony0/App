@@ -3,6 +3,7 @@ from sklearn.linear_model import Ridge
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.pipeline import Pipeline
 from src.features.preprocessor import build_preprocessing_pipeline
+from src.features.custom_transformers import PotentialGapTransformer
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -80,5 +81,21 @@ def build_full_pipeline(
     numerical_features: list,
     categorical_features: list,
 ) -> Pipeline:
+    """Assemble le pipeline complet : feature engineering -> préprocessing -> modèle.
+
+    Le `PotentialGapTransformer` est la **source de vérité unique** pour `potential_gap`
+    (= potential - overall). Il est calculé ici, à l'intérieur du pipeline, donc :
+      - plus de duplication (auparavant recalculé dans feature_selection ET dans le service) ;
+      - l'API n'a qu'à fournir les attributs bruts, la feature dérivée est produite seule ;
+      - aucune fuite : transformation déterministe par ligne, indépendante du jeu.
+    `numerical_features` inclut `potential_gap` : le ColumnTransformer le sélectionne après
+    que le transformer l'a ajouté au DataFrame.
+    """
     preprocessor = build_preprocessing_pipeline(numerical_features, categorical_features)
-    return Pipeline(steps=[("preprocessor", preprocessor), ("model", model)])
+    return Pipeline(
+        steps=[
+            ("gap", PotentialGapTransformer()),
+            ("preprocessor", preprocessor),
+            ("model", model),
+        ]
+    )

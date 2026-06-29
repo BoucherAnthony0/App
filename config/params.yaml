@@ -67,6 +67,32 @@ split:
   test_size: 0.2
   random_state: 42
 
+# Évaluation robuste : validation croisée + optimisation d'hyperparamètres.
+evaluation:
+  cv_folds: 5                 # K-fold sur le TRAIN uniquement (pas de fuite)
+  scoring: "neg_root_mean_squared_error"
+
+tuning:
+  enabled: true               # RandomizedSearchCV par modèle (mettre false pour aller vite)
+  n_iter: 15                  # nb de combinaisons testées par modèle
+  cv_folds: 3                 # CV interne de la recherche (plus court que l'éval)
+  random_state: 42
+  # Espaces de recherche (préfixe "model__" = étape "model" du pipeline sklearn).
+  search_spaces:
+    ridge:
+      model__alpha: [0.1, 1.0, 10.0, 50.0, 100.0]
+    random_forest:
+      model__n_estimators: [100, 200, 300]
+      model__max_depth: [10, 15, 20, null]
+      model__min_samples_leaf: [1, 3, 5, 10]
+    gradient_boosting:
+      model__n_estimators: [200, 300, 500]
+      model__learning_rate: [0.02, 0.05, 0.1]
+      model__max_depth: [4, 6, 8]
+    mlp:
+      model__alpha: [0.0001, 0.001, 0.01]
+      model__learning_rate_init: [0.001, 0.005]
+
 models:
   ridge:
     alpha: 10.0

@@ -1,4 +1,5 @@
 """Model explanation helpers (SHAP)."""
+import logging
 import os
 import numpy as np
 import pandas as pd
@@ -8,6 +9,10 @@ from sklearn.pipeline import Pipeline
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+# SHAP logge ses calculs internes (KernelExplainer) en INFO de façon très verbeuse —
+# on le réduit à WARNING pour garder les sorties du pipeline lisibles.
+logging.getLogger("shap").setLevel(logging.WARNING)
 
 
 def _get_feature_names(pipeline: Pipeline) -> list:
@@ -19,9 +24,9 @@ def _get_feature_names(pipeline: Pipeline) -> list:
 
 
 def compute_shap_values(pipeline: Pipeline, X_sample: pd.DataFrame):
-    preprocessor = pipeline.named_steps["preprocessor"]
     model = pipeline.named_steps["model"]
-    X_transformed = preprocessor.transform(X_sample)
+    # Toutes les étapes de préparation (gap + preprocessor), tout sauf le modèle.
+    X_transformed = pipeline[:-1].transform(X_sample)
     feature_names = _get_feature_names(pipeline)
 
     model_name = model.__class__.__name__
@@ -79,9 +84,8 @@ def explain_single_player(
     X_background: pre-transformed training sample saved in the artifact.
     Required for KernelExplainer (MLP/unknown models) to produce non-zero values.
     """
-    preprocessor = pipeline.named_steps["preprocessor"]
     model = pipeline.named_steps["model"]
-    X_transformed = preprocessor.transform(player_df)
+    X_transformed = pipeline[:-1].transform(player_df)
     feature_names = _get_feature_names(pipeline)
     model_name = model.__class__.__name__
 

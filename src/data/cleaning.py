@@ -58,6 +58,20 @@ def remove_outliers(
 
 
 def clean_dataset(df: pd.DataFrame, target_col: str = "value_eur") -> pd.DataFrame:
+    """Nettoyage SANS fuite de données.
+
+    POURQUOI on n'impute PAS ici : auparavant `handle_missing_values()` remplissait les
+    manquants avec la médiane/mode calculés sur **tout** le jeu, avant le `train_test_split`.
+    Le jeu de test influençait alors la préparation du train → fuite de données (data leakage).
+
+    L'imputation est donc déléguée au `ColumnTransformer` du pipeline sklearn
+    (`src/features/preprocessor.py`), qui n'apprend les statistiques d'imputation que sur le
+    `fit` (train). Ici on se limite aux opérations **par ligne**, sans statistique globale :
+    suppression des lignes dont la cible est manquante/nulle (un exemple sans étiquette n'est
+    pas exploitable, ce filtrage ne fuit rien).
+
+    `handle_missing_values()` et `remove_outliers()` restent disponibles pour l'analyse
+    exploratoire (notebook), mais ne sont volontairement plus branchés dans le pipeline.
+    """
     df = drop_invalid_targets(df, target_col)
-    df = handle_missing_values(df)
     return df
