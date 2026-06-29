@@ -15,3 +15,7 @@ reports/metrics.csv
 *.egg-info/
 dist/
 build/
+
+# Documents générés (livrés hors dépôt, cf. consigne : rapports en .docx/.pptx)
+*.docx
+*.pptx

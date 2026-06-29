@@ -122,7 +122,11 @@ def run_comparison(
     table = build_comparison_table(results)
     # On exclut le baseline de la sélection (référence, pas un candidat).
     candidates = {k: v for k, v in results.items() if k != "baseline_mean"}
-    best_name = select_best_model(candidates, metric="rmse")
+    # Sélection sur la VALIDATION CROISÉE, pas sur le test : plus robuste (moyenne sur
+    # plusieurs folds plutôt qu'un tirage unique). Un modèle peut « gagner » sur un split
+    # de test par chance tout en étant instable ; la CV pénalise cette instabilité. C'est
+    # aussi un garde-fou contre les modèles qui extrapolent mal hors de la zone d'entraînement.
+    best_name = select_best_model(candidates, metric="cv_rmse_log_mean")
 
     return trained, table, best_name
 
@@ -148,7 +152,10 @@ def build_comparison_table(results: dict) -> pd.DataFrame:
 
 
 def select_best_model(results: dict, metric: str = "rmse") -> str:
+    # Pour R² « plus haut = mieux » ; pour les RMSE/erreurs « plus bas = mieux ».
     reverse = metric == "r2"
     best = sorted(results.items(), key=lambda x: x[1][metric], reverse=reverse)[0]
-    logger.info(f"Meilleur modèle : {best[0]} ({metric}={best[1][metric]:,.0f})")
+    val = best[1][metric]
+    fmt = f"{val:.4f}" if abs(val) < 100 else f"{val:,.0f}"
+    logger.info(f"Meilleur modèle : {best[0]} ({metric}={fmt})")
     return best[0]
